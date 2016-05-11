@@ -1,5 +1,5 @@
 {
-  "name": "redux-form",
+  "name": "redux-form5",
   "version": "5.2.3",
   "description": "A higher order component decorator for forms using Redux and React",
   "main": "./lib/index.js",
