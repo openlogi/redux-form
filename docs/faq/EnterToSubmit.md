@@ -1,11 +1,11 @@
-# How can I submit my form when the users presses Enter?
+# How can I submit my form when the user presses Enter?
   
 The default browser behavior for `text` and `password` inputs when ↵ is pressed is to activate the first `<button>`
 that does not have `type="button"` specified. The recommended way to structure your form is as follows:
 
 ```javascript
 render() {
-  const {fields: {firstName, lastName}, handleSubmit} = this.props.fields;
+  const {fields: {firstName, lastName}, handleSubmit} = this.props;
   return (
     <form onSubmit={handleSubmit}>
       <button type="button">Load Data</button>
