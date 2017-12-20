@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import LazyCache from 'react-lazy-cache/noGetters';
 import getDisplayName from './getDisplayName';
 import createHigherOrderComponent from './createHigherOrderComponent';
@@ -9,7 +10,8 @@ import createHigherOrderComponent from './createHigherOrderComponent';
 const createReduxFormConnector =
   (isReactNative, React, connect) =>
     (WrappedComponent, mapStateToProps, mapDispatchToProps, mergeProps, options) => {
-      const {Component, PropTypes} = React;
+      const {Component} = React;
+      const { withRef = false } = (options || {});
       class ReduxFormConnector extends Component {
         constructor(props) {
           super(props);
@@ -37,6 +39,9 @@ const createReduxFormConnector =
           // remove some redux-form config-only props
           const {reduxMountPoint, destroyOnUnmount, form, getFormState, touchOnBlur, touchOnChange,
             ...passableProps } = this.props; // eslint-disable-line no-redeclare
+          if ( withRef ) {
+            return <ReduxForm {...passableProps} ref="wrappedInstance"/>;
+          }
           return <ReduxForm {...passableProps}/>;
         }
       }

@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import * as importedActions from './actions';
 import getDisplayName from './getDisplayName';
 import {initialState} from './reducer';
@@ -12,6 +13,7 @@ import silenceEvents from './events/silenceEvents';
 import silenceEvent from './events/silenceEvent';
 import wrapMapDispatchToProps from './wrapMapDispatchToProps';
 import wrapMapStateToProps from './wrapMapStateToProps';
+import createInitialState from './createInitialState';
 
 /**
  * Creates a HOC that knows how to create redux-connected sub-components.
@@ -25,16 +27,20 @@ const createHigherOrderComponent = (config,
                                     mapDispatchToProps,
                                     mergeProps,
                                     options) => {
-  const {Component, PropTypes} = React;
+  const {Component} = React;
   return (reduxMountPoint, formName, formKey, getFormState) => {
+    const { withRef = false } = (options || {});
     class ReduxForm extends Component {
       constructor(props) {
         super(props);
         // bind functions
         this.asyncValidate = this.asyncValidate.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
-        this.fields = readFields(props, {}, {}, this.asyncValidate, isReactNative);
-        const {submitPassback} = this.props;
+        const { initialValues, submitPassback } = this.props;
+        // Check if form state was initialized, if not, initialize it.
+        const form = deepEqual(props.form, initialState) ?
+          createInitialState(initialValues, config.fields, {}, true, false) : props.form;
+        this.fields = readFields({ ...props, form }, {}, {}, this.asyncValidate, isReactNative);
         submitPassback(() => this.handleSubmit());  // wrapped in function to disallow params
       }
 
@@ -138,6 +144,12 @@ const createHigherOrderComponent = (config,
           untouchAll: silenceEvents(() => untouch(...fields))
         };
         const passedProps = propNamespace ? {[propNamespace]: props} : props;
+        if ( withRef ) {
+          return (<WrappedComponent {...{
+            ...passableProps, // contains dispatch
+            ...passedProps
+          }} ref="wrappedInstance" />);
+        }
         return (<WrappedComponent {...{
           ...passableProps, // contains dispatch
           ...passedProps

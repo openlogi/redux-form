@@ -25,16 +25,22 @@ const getValue = (event, isReactNative) => {
     if (type === 'checkbox') {
       return checked;
     }
+    if (type === 'radio') {
+      return checked ? value : '';
+    }
     if (type === 'file') {
       return files || dataTransfer && dataTransfer.files;
     }
     if (type === 'select-multiple') {
       return getSelectedValues(event.target.options);
     }
+    if (value !== '' && (type === 'number' || type === 'range')) {
+      return parseFloat(value);
+    }
     return value;
   }
   // not an event, so must be either our value or an object containing our value in the 'value' key
-  return event && typeof event === 'object' && event.value !== undefined ?
+  return event && typeof event === 'object' && Object.keys(event).length === 1 && event.value !== undefined ?
     event.value : // extract value from { value: value } structure. https://github.com/nikgraf/belle/issues/58
     event;
 };

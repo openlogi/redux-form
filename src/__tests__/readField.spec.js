@@ -570,7 +570,7 @@ describe('readField', () => {
     const afterArray = fields.foo;
     const after1 = fields.foo[0];
     const after2 = fields.foo[1];
-    expect(beforeArray).toBe(afterArray); // array should be same instance
+    expect(beforeArray).toNotBe(afterArray); // array should be different
     expect(before1).toNotBe(after1);      // field instance should be different
     expect(before2).toNotBe(after2);      // field instance should be different
   });
@@ -706,6 +706,62 @@ describe('readField', () => {
       initialValue: '',
       readonly: false
     });
+  });
+
+  it('should change complex field instances when updating a mixed field', () => {
+    const fields = {};
+    readField({
+      pig: {
+        foo: [
+          {
+            dog: {
+              value: 'hello'
+            }
+          }
+        ]
+      }
+    }, 'pig.foo[].dog', undefined, fields, {}, undefined, false, defaultProps);
+    expectField({
+      field: fields.pig.foo[0].dog,
+      name: 'pig.foo[0].dog',
+      value: 'hello',
+      dirty: true,
+      touched: false,
+      visited: false,
+      error: undefined,
+      initialValue: '',
+      readonly: false
+    });
+    const beforeArrayField = fields.pig.foo;
+    const beforeObjectField = fields.pig.foo[0];
+
+    readField({
+      pig: {
+        foo: [
+          {
+            dog: {
+              value: 'goodbye'
+            }
+          }
+        ]
+      }
+    }, 'pig.foo[].dog', undefined, fields, {}, undefined, false, defaultProps);
+    expectField({
+      field: fields.pig.foo[0].dog,
+      name: 'pig.foo[0].dog',
+      value: 'goodbye',
+      dirty: true,
+      touched: false,
+      visited: false,
+      error: undefined,
+      initialValue: '',
+      readonly: false
+    });
+    const afterArrayField = fields.pig.foo;
+    const afterObjectField = fields.pig.foo[0];
+
+    expect(beforeArrayField).toNotBe(afterArrayField); // field instance should be different
+    expect(beforeObjectField).toNotBe(afterObjectField); // field instance should be different
   });
 
   it('should read an array field with an initial value', () => {

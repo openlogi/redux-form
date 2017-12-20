@@ -6,6 +6,7 @@ import createOnFocus from './events/createOnFocus';
 import silencePromise from './silencePromise';
 import read from './read';
 import updateField from './updateField';
+import isChecked from './isChecked';
 
 function getSuffix(input, closeIndex) {
   let suffix = input.substring(closeIndex + 1);
@@ -68,7 +69,7 @@ const readField = (state, fieldName, pathToHere = '', fields, syncErrors, asyncV
       fields[key] = fields[key] ? [...fields[key]] : [];
       addMethods(fields[key]);
     }
-    const fieldArray = fields[key];
+    let fieldArray = fields[key];
     let changed = false;
     stateArray.forEach((fieldState, index) => {
       if (rest && !fieldArray[index]) {
@@ -79,10 +80,14 @@ const readField = (state, fieldName, pathToHere = '', fields, syncErrors, asyncV
       const nextPath = `${pathToHere}${key}[${index}]${rest ? '.' : ''}`;
       const nextPrefix = `${prefix}${key}[]${rest ? '.' : ''}`;
 
-      const result = readField(fieldState, rest, nextPath, dest, syncErrors,
+      let result = readField(fieldState, rest, nextPath, dest, syncErrors,
         asyncValidate, isReactNative, props, callback, nextPrefix);
-      if (!rest && fieldArray[index] !== result) {
-        // if nothing after [] in field name, assign directly to array
+      if (fieldArray[index] !== result) {
+        if (rest) {
+          // if something's after [] in field name, the array item is an object field
+          // we need it to compare !== to the original (so react re-renders appropriately)
+          result = {...dest};
+        }
         fieldArray[index] = result;
         changed = true;
       }
@@ -91,7 +96,11 @@ const readField = (state, fieldName, pathToHere = '', fields, syncErrors, asyncV
       // remove extra items that aren't in state array
       fieldArray.splice(stateArray.length, fieldArray.length - stateArray.length);
     }
-    return changed ? addMethods([...fieldArray]) : fieldArray;
+    if (changed) {
+      fieldArray = addMethods([...fieldArray]);
+    }
+    fields[key] = fieldArray;
+    return fieldArray;
   }
   if (dotIndex > 0) {
     // subobject field
@@ -100,9 +109,10 @@ const readField = (state, fieldName, pathToHere = '', fields, syncErrors, asyncV
     let subobject = fields[key] || {};
     const nextPath = pathToHere + key + '.';
     const nextKey = getNextKey(rest);
+    const nextPrefix = prefix + key + '.';
     const previous = subobject[nextKey];
     const result = readField(state[key] || {}, rest, nextPath, subobject, syncErrors, asyncValidate,
-      isReactNative, props, callback, nextPath);
+      isReactNative, props, callback, nextPrefix);
     if (result !== previous) {
       subobject = {
         ...subobject,
@@ -120,7 +130,7 @@ const readField = (state, fieldName, pathToHere = '', fields, syncErrors, asyncV
     let initialValue = initialFormValue || read(name, initialValues);
     initialValue = initialValue === undefined ? '' : initialValue;
     field.name = name;
-    field.checked = initialValue === true || undefined;
+    field.checked = isChecked(initialValue);
     field.value = initialValue;
     field.initialValue = initialValue;
     if (!readonly) {
@@ -139,12 +149,7 @@ const readField = (state, fieldName, pathToHere = '', fields, syncErrors, asyncV
     Object.defineProperty(field, '_isField', {value: true});
   }
 
-  const defaultFieldState = {
-    initial: field.value,
-    value: field.value,
-  };
-
-  const fieldState = (fieldName ? state[fieldName] : state) || defaultFieldState;
+  const fieldState = (fieldName ? state[fieldName] : state) || {};
   const syncError = read(name, syncErrors);
   const updated = updateField(field, fieldState, name === form._active, syncError);
   if (fieldName || fields[fieldName] !== updated) {

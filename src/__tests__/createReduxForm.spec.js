@@ -1,6 +1,7 @@
 /* eslint react/no-multi-comp:0 */
 import expect, {createSpy} from 'expect';
-import React, {Component, PropTypes} from 'react';
+import React, {Component} from 'react';
+import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import ReactDOM from 'react-dom';
 import TestUtils from 'react-addons-test-utils';
@@ -29,6 +30,12 @@ describe('createReduxForm', () => {
   class Form extends Component {
     render() {
       return <div />;
+    }
+  }
+
+  class Passthrough extends Component {
+    render() {
+      return <div {...this.props} />;
     }
   }
 
@@ -1495,12 +1502,14 @@ describe('createReduxForm', () => {
     expect(store.getState().form.testForm.users[ 0 ].name)
       .toEqual({
         initial: 'Bob',
-        value: 'Bob'
+        value: 'Bob',
+        _isFieldValue: true
       });
     expect(store.getState().form.testForm.users[ 0 ].age)
       .toEqual({
         initial: 27,
-        value: 27
+        value: 27,
+        _isFieldValue: true
       });
   });
 
@@ -1573,7 +1582,8 @@ describe('createReduxForm', () => {
         'proposals[].note',
         'proposals[].rooms[].name',
         'proposals[].rooms[].adults',
-        'proposals[].rooms[].children'
+        'proposals[].rooms[].children',
+        'proposals[].meta.items[].name'
       ]
     })(Form);
     const dom = TestUtils.renderIntoDocument(
@@ -1597,13 +1607,22 @@ describe('createReduxForm', () => {
         name: 'Room 1',
         adults: 2,
         children: 0
-      } ]
+      } ],
+      meta: {
+        items: [{
+          name: 'Bilbo'
+        }]
+      }
     });
 
     stub.props.fields.proposals[ 0 ].rooms.addField({
       name: 'Room 2',
       adults: 0,
       children: 2
+    });
+
+    stub.props.fields.proposals[ 0 ].meta.items.addField({
+      name: 'Frodo',
     });
 
     // check field
@@ -1708,6 +1727,30 @@ describe('createReduxForm', () => {
       touched: false,
       visited: false
     });
+
+    expectField({
+      field: stub.props.fields.proposals[ 0 ].meta.items[ 0 ].name,
+      name: 'proposals[0].meta.items[0].name',
+      value: 'Bilbo',
+      initial: 'Bilbo',
+      valid: true,
+      dirty: false,
+      error: undefined,
+      touched: false,
+      visited: false
+    });
+
+    expectField({
+      field: stub.props.fields.proposals[ 0 ].meta.items[ 1 ].name,
+      name: 'proposals[0].meta.items[1].name',
+      value: 'Frodo',
+      initial: 'Frodo',
+      valid: true,
+      dirty: false,
+      error: undefined,
+      touched: false,
+      visited: false
+    });
   });
 
   // Test to demonstrate https://github.com/erikras/redux-form/issues/612
@@ -1794,7 +1837,8 @@ describe('createReduxForm', () => {
     expect(store.getState().form.testForm.children)
       .toEqual({
         initial: [ 3, 4 ],
-        value: [ 3, 4 ]
+        value: [ 3, 4 ],
+        _isFieldValue: true
       });
     // reset form to newly initialized values
     stub.props.resetForm();
@@ -1842,7 +1886,8 @@ describe('createReduxForm', () => {
     expect(store.getState().form.testForm.name)
       .toEqual({
         initial: 'Bob',
-        value: 'Bob'
+        value: 'Bob',
+        _isFieldValue: true
       });
     // set value
     stub.props.fields.name.onChange('Dan');
@@ -1862,7 +1907,8 @@ describe('createReduxForm', () => {
     expect(store.getState().form.testForm.name)
       .toEqual({
         initial: 'Bob',
-        value: 'Dan'
+        value: 'Dan',
+        _isFieldValue: true
       });
 
     // should NOT dispatch INITIALIZE this time
@@ -1888,7 +1934,8 @@ describe('createReduxForm', () => {
     expect(store.getState().form.testForm.name)
       .toEqual({
         initial: 'Bob',
-        value: 'Dan'
+        value: 'Dan',
+        _isFieldValue: true
       });
 
     // manually initialize new values
@@ -1909,7 +1956,8 @@ describe('createReduxForm', () => {
     expect(store.getState().form.testForm.name)
       .toEqual({
         initial: 'Tom',
-        value: 'Tom'
+        value: 'Tom',
+        _isFieldValue: true
       });
   });
 
@@ -1945,7 +1993,8 @@ describe('createReduxForm', () => {
     expect(store.getState().form.testForm.name)
       .toEqual({
         initial: 'Tom',
-        value: 'Tom'
+        value: 'Tom',
+        _isFieldValue: true
       });
     // check value
     expectField({
@@ -2038,7 +2087,8 @@ describe('createReduxForm', () => {
           .toEqual({
             initial: 'Tom',
             value: 'Moe',
-            asyncError: deepError
+            asyncError: deepError,
+            _isFieldValue: true
           });
         // check field
         expectField({
@@ -2095,7 +2145,8 @@ describe('createReduxForm', () => {
             initial: 'Tom',
             value: 'Tom',
             submitError: deepError,
-            touched: true
+            touched: true,
+            _isFieldValue: true
           });
         // check field
         expectField({
@@ -2211,7 +2262,7 @@ describe('createReduxForm', () => {
 
     const Decorated = reduxForm({
       form,
-      fields: [ 'firstName', 'lastName' ],
+      fields: [ 'firstName', 'lastName', 'instrument' ],
       overwriteOnInitialValuesChange: false
     })(Form);
 
@@ -2257,12 +2308,15 @@ describe('createReduxForm', () => {
     // users changes to George Harrison
     stub.props.fields.firstName.onChange('George');
     stub.props.fields.lastName.onChange('Harrison');
+    stub.props.fields.instrument.onChange('guitar');
 
-    // values are now George Harrison
+    // values are now George Harrison (guitar)
     expect(stub.props.fields.firstName.value).toBe('George');
     expect(stub.props.fields.firstName.pristine).toBe(false);
     expect(stub.props.fields.lastName.value).toBe('Harrison');
     expect(stub.props.fields.lastName.pristine).toBe(false);
+    expect(stub.props.fields.instrument.value).toBe('guitar');
+    expect(stub.props.fields.instrument.pristine).toBe(false);
 
     // change initialValues to Ringo Starr
     const button = TestUtils.findRenderedDOMComponentWithTag(dom, 'button');
@@ -2273,6 +2327,8 @@ describe('createReduxForm', () => {
     expect(stub.props.fields.firstName.pristine).toBe(false);
     expect(stub.props.fields.lastName.value).toBe('Harrison');
     expect(stub.props.fields.lastName.pristine).toBe(false);
+    expect(stub.props.fields.instrument.value).toBe('guitar');
+    expect(stub.props.fields.instrument.pristine).toBe(false);
 
     // but, if we reset form
     stub.props.resetForm();
@@ -2282,6 +2338,8 @@ describe('createReduxForm', () => {
     expect(stub.props.fields.firstName.pristine).toBe(true);
     expect(stub.props.fields.lastName.value).toBe('Starr');
     expect(stub.props.fields.lastName.pristine).toBe(true);
+    expect(stub.props.fields.instrument.value).toBe('');
+    expect(stub.props.fields.instrument.pristine).toBe(true);
   });
 
   it('should replace existing values when initialValues changes', () => {
@@ -2357,7 +2415,12 @@ describe('createReduxForm', () => {
     const store = makeStore();
     const form = 'testForm';
     const initialValues = { firstName: 'Bobby', lastName: 'Tables', age: 12 };
-    const onSubmit = createSpy().andReturn(Promise.resolve());
+    const onSubmit = createSpy().andCall((values, dispatch, props) => {
+      expect(values).toEqual(initialValues);
+      expect(dispatch).toEqual(store.dispatch);
+      expect(props.testProp).toEqual(1337);
+      return Promise.resolve();
+    });
     const Decorated = reduxForm({
       form,
       fields: [ 'firstName', 'lastName', 'age' ],
@@ -2378,7 +2441,7 @@ describe('createReduxForm', () => {
       render() {
         return (
           <div>
-            <Decorated ref="myForm"/>
+            <Decorated ref="myForm" testProp={1337} />
             <button type="button" onClick={this.submitFromParent}>Submit From Parent</button>
           </div>
         );
@@ -2398,8 +2461,7 @@ describe('createReduxForm', () => {
     TestUtils.Simulate.click(button);
 
     expect(onSubmit)
-      .toHaveBeenCalled()
-      .toHaveBeenCalledWith(initialValues, store.dispatch);
+      .toHaveBeenCalled();
   });
 
   it('submitting from parent should fail if sync validation errors', () => {
@@ -2688,6 +2750,69 @@ describe('createReduxForm', () => {
     );
   });
 
+  it('should throw when trying to access the wrapped instance if withRef is not specified', () => {
+    const store = makeStore();
+
+    class Container extends Component {
+      render() {
+        return <Passthrough />;
+      }
+    }
+
+    const DecoratedForm = reduxForm({
+      form: 'withoutRefTest',
+      fields: ['foo', 'bar']
+    })(Container);
+
+    const dom = TestUtils.renderIntoDocument(
+      <Provider store={store}>
+        <DecoratedForm />
+      </Provider>
+    );
+
+    const decorated = TestUtils.findRenderedComponentWithType(dom, DecoratedForm);
+    expect(() => decorated.getWrappedInstance()).toThrow(
+      /To access the wrapped instance, you need to specify \{ withRef: true \} as the fourth argument of the connect\(\) call\./
+    );
+  });
+
+  it('should return the instance of the wrapped component for use in calling child methods', () => {
+
+    const store = makeStore();
+
+    const someData = {
+      some: 'data'
+    };
+
+    class Container extends Component {
+
+      someInstanceMethod() {
+        return someData;
+      }
+
+      render() {
+        return <Passthrough />;
+      }
+    }
+
+    const DecoratedForm = reduxForm({
+      form: 'withRefTest',
+      fields: ['foo', 'bar']
+    }, null, null, null, {withRef: true})(Container);
+
+    const dom = TestUtils.renderIntoDocument(
+      <Provider store={store}>
+        <DecoratedForm />
+      </Provider>
+    );
+
+    const decorated = TestUtils.findRenderedComponentWithType(dom, DecoratedForm);
+
+    expect(() => decorated.someInstanceMethod()).toThrow();
+    expect(decorated.getWrappedInstance().someInstanceMethod()).toBe(someData);
+    expect(decorated.refs.wrappedInstance.refs.wrappedInstance.getWrappedInstance().refs.wrappedInstance.someInstanceMethod()).toBe(someData);
+  });
+
   it('should change nested fields', () => {
     let lastPrevBarValue; // eslint-disable-line
     let lastNextBarValue; // eslint-disable-line
@@ -2759,5 +2884,44 @@ describe('createReduxForm', () => {
 
     // FAILS
     //expect(lastPrevBarValue).toNotEqual(lastNextBarValue);
+  });
+
+  // Test to show bug https://github.com/erikras/redux-form/issues/1241
+  it('pass correct initial values to validate when initialValues not given', () => {
+    const store = makeStore();
+    const form = 'testForm';
+    const validate = values => {
+      expect(values.name).toBe(undefined);
+      expect(values.company.name).toBe('Foo');
+    };
+
+    class ValidateTestForm extends Component {
+      render() {
+        const {fields: {name}} = this.props;
+        return (<div>
+          <input {...name}/>
+        </div>);
+      }
+    }
+
+    ValidateTestForm.propTypes = {
+      fields: PropTypes.object.isRequired
+    };
+
+    const Decorated = reduxForm({
+      form,
+      fields: ['name', 'company.name'],
+      validate,
+    })(ValidateTestForm);
+
+    const initialValues = {
+      company: { name: 'Foo' }
+    };
+
+    TestUtils.renderIntoDocument(
+      <Provider store={store}>
+        <Decorated initialValues={initialValues} />
+      </Provider>
+    );
   });
 });
